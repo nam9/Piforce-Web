@@ -9,16 +9,19 @@
 import struct, sys
 import socket
 import time
+import logging
 #from Adafruit_CharLCDPlate import Adafruit_CharLCDPlate
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 def connect(ip, port):
+	logging.debug('Attempting connect')
 	global s
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s.connect((ip, port))
 
 def disconnect():
+	logging.debug('Attempting disconnect')
 	global s
 	s.close()
 
@@ -47,6 +50,7 @@ def HOST_Poke4(addr, data):
 	s.send(struct.pack("<IIII", 0x1100000C, addr, 0, data))
 
 def HOST_Restart():
+	logging.debug('Attempting HOST_Restart')
 	s.send(struct.pack("<I", 0x0A000000))
 
 # Read a number of bytes (up to 32k) from DIMM memory (i.e. where the game is). Probably doesn't work for NAND-based games.
@@ -62,6 +66,7 @@ def DIMM_SetInformation(crc, length):
 	s.send(struct.pack("<IIII", 0x1900000C, crc & 0xFFFFFFFF, length, 0))
 
 def DIMM_Upload(addr, data, mark):
+	logging.debug('Attempting DIMM_Upload')
 	s.send(struct.pack("<IIIH", 0x04800000 | (len(data) + 0xA) | (mark << 16), 0, addr, 0) + data)
 
 def NETFIRM_GetInformation():
@@ -73,10 +78,12 @@ def CONTROL_Read(addr):
 	return s.recv(0xC)
 
 def SECURITY_SetKeycode(data):
+	logging.debug('Attempting SECURITY_SetKeycode')
 	assert len(data) == 8
 	s.send(struct.pack("<I", 0x7F000008) + data)
 
 def HOST_SetMode(v_and, v_or):
+	logging.debug('Attempting HOST_SetMode')
 	s.send(struct.pack("<II", 0x07000004, (v_and << 8) | v_or))
 	return readsocket(0x8)
 
@@ -96,6 +103,7 @@ def MEDIA_Format(data):
 	s.send(struct.pack("<II", 0x21000004, data))
 
 def TIME_SetLimit(data):
+	logging.debug('Attempting TIME_SetLimit')
 	s.send(struct.pack("<II", 0x17000004, data))
 
 def DIMM_DumpToFile(file):
@@ -117,6 +125,7 @@ def DIMM_UploadFile(name, key = None):
 	crc = 0
 	a = open(name, "rb")
 	addr = 0
+	logging.debug('Attempting DIMM_UploadFile')
 	if key:
 		d = DES.new(key[::-1], DES.MODE_ECB)
 	while True:
@@ -130,7 +139,9 @@ def DIMM_UploadFile(name, key = None):
 		crc = zlib.crc32(data, crc)
 		addr += len(data)
 	crc = ~crc
+	logging.debug('Attempting DIMM_Upload')
 	DIMM_Upload(addr, "12345678", 1)
+	logging.debug('Completed DIMM_Upload')
 	DIMM_SetInformation(crc, addr)
 
 # obsolete
